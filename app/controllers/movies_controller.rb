@@ -8,34 +8,63 @@ class MoviesController < ApplicationController
   end
 
   def index
-   		
+ 	
 	@selected_ratings = []
-	@ticked = {}	
-	
+	@ticked = {}
+	@sort = ''
+		
 	@all_ratings = Movie.all_ratings 
 	
-	if params[:commit] == 'Refresh'
-				
-		if params[:ratings] != nil
-			params[:ratings].each_key do |r| 
-				@selected_ratings << r
-				@ticked[r] = true
-			end
-		end	
-	else
+	redirect_needed = false
+	
+	if session[:current] == nil
+		session[:current] = true
 		@selected_ratings = @all_ratings
-		@selected_ratings.each { |r| @ticked[r] = false }
-	end
-		
-	if params[:sort] == 'title' 
-		@header_class = 'hilite'
+		@selected_ratings.each { |r| @ticked[r] = true }
 	end
 	
-	if params[:sort] == 'release_date' 
-		@release_date_class = 'hilite'
+	if params[:ratings] == nil
+		if session[:selected] != nil
+			params[:ratings] = {}
+			session[:selected].each { |r| params[:ratings][r] = '1'} 
+			redirect_needed = true
+		end
+	end
+	
+	if params[:sort] == nil
+		if session[:sort] != nil
+			params[:sort] = session[:sort]
+			redirect_needed = true
+		end
+	end	
+		
+	if redirect_needed 
+		p "call redirect with" 
+		p params
+		redirect_to movies_path(params)
 	end
 		
-	@movies = Movie.all(:conditions => {'rating' => @selected_ratings}, :order => params[:sort])
+	if params[:ratings] != nil
+		session.delete(:selected)
+		params[:ratings].each_key do |r| 
+			@selected_ratings << r
+			@ticked[r] = true
+		end
+	end
+
+	@sort = params[:sort]
+	if @sort == 'title' 
+		@header_class = 'hilite'
+	elsif @sort == 'release_date' 
+		@release_date_class = 'hilite'
+	end
+	
+	# preserve users selection and sort for same session
+	session[:selected] = @selected_ratings
+	session[:sort] = @sort
+	
+	@movies = Movie.all(:conditions => {'rating' => @selected_ratings}, :order => @sort)
+
   end
   
   def new
